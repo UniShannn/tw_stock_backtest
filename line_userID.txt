@@ -1,0 +1,9 @@
+# 啟用教學
+# https://developer.fugle.tw/blog/2024-10-10-line-messaging-api/
+# line - deveploper - basic setting
+
+# User ID
+U643738718576e0c9711bbcda0c5797fa
+
+# Channel access token
+XCMLyh+k9QIVUY9f7adfgiQOtFJAVqXh6+QwHGc/z46jd4pd4JbqofxpGHNnsZ757nNjMggYF2bSyWKmN8cUyyIS4lR9YOpThZo5VDX5FbURnu4DxFxcnYhNnKzj200hf+OX/1iaNScPUq/FEkG8IQdB04t89/1O/w1cDnyilFU=
