@@ -105,7 +105,7 @@ def analyze_candlestick_patterns(volume_threshold=1.5):
     print("✅ 所有股票分析完成！開始打包報告並發送至 Discord...\n")
 
     # ==========================================
-    # 4. 組裝與打包 Discord 訊息
+    # 4. 組裝與打包 Discord 訊息 123
     # ==========================================
     final_messages = ["**📊 台股 K 線型態與多因子勝率分析報告**\n"]
     
