@@ -1,0 +1,12 @@
+# tw_stock_backtest/.gitignore
+
+# 阻擋最高機密環境變數檔
+.env
+
+# 阻擋您的歷史資料庫（CSV檔案通常很大，不適合進Git，只要保留程式碼即可）
+data/raw/
+data/processed/
+
+# 阻擋 Python 自動生成的緩存編譯檔
+__pycache__/
+*.pyc
