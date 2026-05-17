@@ -3,6 +3,9 @@
 # 阻擋最高機密環境變數檔
 .env
 
+# 阻擋 readme.txt (跟AI方便溝通用的資料庫說明文件，不適合放在Git上)
+readme.txt
+
 # 阻擋您的歷史資料庫（CSV檔案通常很大，不適合進Git，只要保留程式碼即可）
 data/raw/
 data/processed/
