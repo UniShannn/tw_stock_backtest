@@ -41,11 +41,11 @@ def get_stock_pool(market=None, industry=None, custom_list=None):
 
 # 🚀 未來您只要在這裡切換策略池即可！
 # 情境 1：我想跑【全市場】大數據回測 (約 1800 檔)
-# TARGET_STOCKS = get_stock_pool()
+TARGET_STOCKS = get_stock_pool()
 # 情境 2：我只想測試【上市的半導體業】
 # TARGET_STOCKS = get_stock_pool(market='上市', industry='半導體業')
 # 情境 3：手動測試觀察名單
-TARGET_STOCKS = get_stock_pool(custom_list=['2330.TW', '2454.TW', '2303.TW'])
+# TARGET_STOCKS = get_stock_pool(custom_list=['2330.TW', '2454.TW', '2303.TW'])
 print(f"目前選股池共 {len(TARGET_STOCKS)} 檔股票。")
 print(f"前 10 檔股票代號：{TARGET_STOCKS[:10]}")
 
