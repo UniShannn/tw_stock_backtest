@@ -1,4 +1,6 @@
-# 檔案位置：src/test/test_path.py
+# 注意!!! 凡是在test資料夾底下的py檔案 
+# 記得要先打 import path 才 import config
+# 為了把 src/ 加到路徑中，才能順利 import src/ 底下的模組
 import os
 import sys
 

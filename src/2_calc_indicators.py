@@ -22,175 +22,6 @@ def preprocess_data(df):
 
 # 幫我加上紅色k棒 綠色K棒貼圖: 
 # 模組 ：專門處理「K棒型態」
-def add_K棒型態(df, 
-                           large_body_pct=3.0, 
-                           doji_body_pct=0.3, 
-                           shadow_multiplier=2.0):
-    """
-    傳入 DataFrame，計算包含上下影線與實體大小的客製化 K 棒型態。
-    
-    參數 (可客製化調整):
-    - large_body_pct: 實體佔開盤價幾 % 以上視為「大陽/大陰線」(預設 3%)
-    - doji_body_pct: 實體小於幾 % 視為「十字線」(預設 0.3%)
-    - shadow_multiplier: 影線長度必須是實體的「幾倍」才算長影線 (預設 2倍)
-    """
-    
-    # ==========================================
-    # 1. 基礎距離與長度計算
-    # ==========================================
-    df['Body'] = df['Close'] - df['Open']
-    df['Abs_Body'] = df['Body'].abs()  # 實體絕對長度
-    df['Body_Pct'] = (df['Abs_Body'] / df['Open']) * 100 
-    
-    # 計算上下影線長度 (利用 max 和 min 找出實體上下緣)
-    # df[['Open', 'Close']].max(axis=1) 會抓出每一列開盤與收盤較高的那個值
-    df['Upper_Shadow'] = df['High'] - df[['Open', 'Close']].max(axis=1)
-    df['Lower_Shadow'] = df[['Open', 'Close']].min(axis=1) - df['Low']
-
-    # ==========================================
-    # 2. 條件判斷標籤 (布林值)
-    # ==========================================
-    df['Is_Red'] = df['Close'] > df['Open']      # 收紅
-    
-    # 實體條件
-    df['Is_Large_Body'] = df['Body_Pct'] >= large_body_pct
-    df['Is_Doji'] = df['Body_Pct'] <= doji_body_pct
-    
-    # 影線條件：影線長度 > (實體長度 * 倍數)
-    # 加上一個極小值 (1e-5) 是為了防止十字線時實體為 0 導致錯誤
-    df['Has_Long_Upper'] = df['Upper_Shadow'] > (df['Abs_Body'] * shadow_multiplier + 1e-5)
-    df['Has_Long_Lower'] = df['Lower_Shadow'] > (df['Abs_Body'] * shadow_multiplier + 1e-5)
-
-    # ==========================================
-    # 3. 綜合型態判斷邏輯 (實體混搭影線)
-    # ==========================================
-    def get_complex_pattern(row):
-        # 狀況 A：十字線家族
-        if row['Is_Doji']:
-            if row['Lower_Shadow'] > row['Upper_Shadow'] * 3:
-                return '蜻蜓十字 (長下影)'
-            elif row['Upper_Shadow'] > row['Lower_Shadow'] * 3:
-                return '墓碑十字 (長上影)'
-            else:
-                return '一般十字線'
-                
-        # 決定顏色稱呼
-        color = "紅" if row['Is_Red'] else "黑"
-
-        # 狀況 B：帶有長影線的反轉型態
-        if row['Has_Long_Upper'] and not row['Has_Long_Lower']:
-            return f'長上影線{color}實體 (避雷針)'
-            
-        if row['Has_Long_Lower'] and not row['Has_Long_Upper']:
-            return f'長下影線{color}實體 (槌子線)'
-            
-        if row['Has_Long_Upper'] and row['Has_Long_Lower']:
-            return f'上下長影線{color}實體 (紡錘線)'
-
-        # 狀況 C：無明顯長影線，依實體大小判斷
-        if row['Is_Large_Body']:
-            return f'大{color}線'
-            
-        return f'一般{color}線'
-            
-    # 套用判斷邏輯
-    df['Pattern'] = df.apply(get_complex_pattern, axis=1)
-    
-    # ==========================================
-    # 4. 計算隔日是否上漲與欄位清理
-    # ==========================================
-    df['Next_Close'] = df['Close'].shift(-1)
-    df['Next_Day_Up'] = df['Next_Close'] > df['Close']
-    
-    # 清除運算過程產生的過渡欄位，讓 CSV 保持乾淨
-    cols_to_drop = ['Abs_Body', 'Is_Red', 'Is_Large_Body', 'Is_Doji', 'Has_Long_Upper', 'Has_Long_Lower']
-    df.drop(columns=cols_to_drop, inplace=True)
-    
-    return df
-
-def add_K棒型態_v2(df, large_body_pct=4.5, doji_pct=0.3, shadow_mult=2.0):
-    """
-    計算單根 K 棒的 16 種基本型態，並結合每日漲跌幅。
-    
-    參數:
-      df: 包含 Open, High, Low, Close 的 DataFrame
-      large_body_pct: 實體佔開盤價的百分比，大於此值視為「大陽/大陰線」(預設 4.5%)
-      doji_pct: 實體佔開盤價的百分比，小於此值視為「十字星」(預設 0.3%)
-      shadow_mult: 影線長度必須是實體的幾倍，才算是「長影線」(預設 2.0 倍)
-    """
-    # 複製一份資料以避免改動原始 df
-    df = df.copy()
-
-    # --- 1. 新增：每日漲跌幅 ---
-    # 使用前一天的收盤價計算今天的漲跌幅 (%)
-    df['Daily_Return_Pct'] = df['Close'].pct_change() * 100
-
-    # --- 2. K棒基礎解構 (絕對數值) ---
-    df['Body'] = abs(df['Close'] - df['Open'])
-    df['Upper_Shadow'] = df['High'] - df[['Open', 'Close']].max(axis=1)
-    df['Lower_Shadow'] = df[['Open', 'Close']].min(axis=1) - df['Low']
-    df['Total_Range'] = df['High'] - df['Low']
-    
-    # 實體佔股價的百分比 (用來判斷是否為大實體或十字星)
-    df['Body_Pct'] = (df['Body'] / df['Open']) * 100
-
-    # 判斷顏色
-    df['Color'] = np.where(df['Close'] > df['Open'], '紅',
-                  np.where(df['Close'] < df['Open'], '綠', '平'))
-
-    # --- 3. 設定邏輯遮罩 (Masks) ---
-    is_doji = df['Body_Pct'] <= doji_pct                 # 實體極小
-    is_large_body = df['Body_Pct'] >= large_body_pct     # 實體很大
-    
-    # 為了避免除以 0，改用乘法來判斷影線比例
-    has_long_upper = df['Upper_Shadow'] >= (df['Body'] * shadow_mult)
-    has_long_lower = df['Lower_Shadow'] >= (df['Body'] * shadow_mult)
-    
-    # 幾乎沒有影線 (光頭/光腳)
-    no_upper = df['Upper_Shadow'] <= (df['Open'] * 0.001) 
-    no_lower = df['Lower_Shadow'] <= (df['Open'] * 0.001)
-
-    # 初始化預設值
-    df['Pattern'] = '一般型態'
-
-    # --- 4. 開始標註 16 種型態 (條件從嚴格到寬鬆) ---
-
-    # (1) 一字線 (開盤=收盤=最高=最低，漲跌停常見)
-    df.loc[(df['Total_Range'] == 0), 'Pattern'] = '一字線'
-
-    # (2-4) 十字星家族
-    df.loc[is_doji & no_upper & (df['Lower_Shadow'] > 0), 'Pattern'] = '蜻蜓十字'
-    df.loc[is_doji & no_lower & (df['Upper_Shadow'] > 0), 'Pattern'] = '墓碑十字'
-    df.loc[is_doji & has_long_upper & has_long_lower, 'Pattern'] = '長腳十字'
-    df.loc[is_doji & (df['Pattern'] == '一般型態'), 'Pattern'] = '一般十字星'
-
-    # (5-8) 極端無影線大K棒
-    df.loc[is_large_body & (df['Color'] == '紅') & no_upper & no_lower, 'Pattern'] = '光頭光腳大陽線'
-    df.loc[is_large_body & (df['Color'] == '綠') & no_upper & no_lower, 'Pattern'] = '光頭光腳大陰線'
-    df.loc[is_large_body & (df['Color'] == '紅') & has_long_upper & no_lower, 'Pattern'] = '光腳長上影大陽線'
-    df.loc[is_large_body & (df['Color'] == '綠') & no_upper & has_long_lower, 'Pattern'] = '光頭長下影大陰線'
-
-    # (9-12) 帶影線的中小實體 (槌子、流星、吊人線)
-    # 紅色
-    df.loc[~is_large_body & ~is_doji & (df['Color'] == '紅') & has_long_lower & ~has_long_upper, 'Pattern'] = '下影陽線(槌子/吊人)'
-    df.loc[~is_large_body & ~is_doji & (df['Color'] == '紅') & has_long_upper & ~has_long_lower, 'Pattern'] = '上影陽線(倒槌/流星)'
-    # 綠色
-    df.loc[~is_large_body & ~is_doji & (df['Color'] == '綠') & has_long_lower & ~has_long_upper, 'Pattern'] = '下影陰線'
-    df.loc[~is_large_body & ~is_doji & (df['Color'] == '綠') & has_long_upper & ~has_long_lower, 'Pattern'] = '上影陰線'
-
-    # (13-14) 紡錘線 (上下影線皆長，實體不大)
-    df.loc[~is_large_body & ~is_doji & (df['Color'] == '紅') & has_long_upper & has_long_lower, 'Pattern'] = '紅紡錘線'
-    df.loc[~is_large_body & ~is_doji & (df['Color'] == '綠') & has_long_upper & has_long_lower, 'Pattern'] = '綠紡錘線'
-
-    # (15-16) 剩下的大陽線與大陰線 (帶有普通長度的影線)
-    df.loc[is_large_body & (df['Color'] == '紅') & (df['Pattern'] == '一般型態'), 'Pattern'] = '大陽線'
-    df.loc[is_large_body & (df['Color'] == '綠') & (df['Pattern'] == '一般型態'), 'Pattern'] = '大陰線'
-
-    # --- 5. 清理過渡計算用的欄位 (保持 CSV 乾淨) ---
-    df.drop(columns=['Body', 'Upper_Shadow', 'Lower_Shadow', 'Total_Range', 'Body_Pct'], inplace=True)
-
-    return df
-
 def add_K棒型態_v3(df):
     """ 將 K 棒的實體大小、影線長度等特徵與漲跌幅等級結合，定義更細緻的型態分類規則
     定義：
@@ -307,34 +138,33 @@ def add_每日漲跌幅(df, window=20):
     
     ## 2. 漲跌幅等級分類
     def classify_return(pct):
-        if  20> pct > 10:
+        if  pct > 10.0:
             return 6  # 超過 10% 的漲幅 (正2的股票)，給予特別等級 6
-        elif 10 >= pct > 8:
+        elif 10.0 >= pct > 8.0:
             return 5
-        elif 8 >= pct > 6:
+        elif 8.0 >= pct > 6.0:
             return 4
-        elif 6 >= pct > 4:
+        elif 6.0 >= pct > 4.0:
             return 3
-        elif 4 >= pct > 2:
+        elif 4.0 >= pct > 2.0:
             return 2
-        elif 2 >= pct > 0:
+        elif 2.0 >= pct > 0:
             return 1
         elif pct == 0:
             return 0  # 漲跌幅為 0%，給予等級 0
-        elif 0 > pct > -2:
+        elif 0 > pct > -2.0:
             return -1
-        elif -2 >= pct > -4:
+        elif -2.0 >= pct > -4.0:
             return -2
-        elif -4 >= pct > -6:
+        elif -4.0 >= pct > -6.0:
             return -3
-        elif -6 >= pct > -8:
+        elif -6.0 >= pct > -8.0:
             return -4
-        elif -8 >= pct > -10:
+        elif -8.0 >= pct > -10.0:
             return -5
-        elif -10 >= pct > -20:
+        elif -10.0 >= pct:
             return -6  # 超過-10%的跌幅 (正2的股票)，給予特別等級 -6
-        else:
-            return 999  # 其他極端情況或計算錯誤 (例如漲跌幅超過 20% 或跌幅超過 -20%)，給予特殊等級 999
+        
     df['漲跌幅等級'] = df['漲跌幅'].apply(classify_return)
 
 
