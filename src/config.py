@@ -8,6 +8,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = os.path.join(BASE_DIR, "data")
 RAW_DIR = os.path.join(DATA_DIR, "raw")
 PROCESSED_DIR = os.path.join(DATA_DIR, "processed")
+REPORT_DIR = os.path.join(BASE_DIR, "data", "report")
 
 METADATA_FILE = os.path.join(RAW_DIR, "tw_stock_metadata.csv")
 def get_stock_pool(market=None, industry=None, custom_list=None):
