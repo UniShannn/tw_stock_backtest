@@ -8,28 +8,28 @@ from datetime import datetime
 
 def categorize_return(pct):
     """將漲跌幅連續數值轉換為等級"""
-    if pd.isna(pct): return '13.未知'
-    if pct > 10: return '00.超漲(>10%)(正2股/分割/除權息/異常)'
-    elif pct >= 8: return '01.漲停或暴漲(>8%)'
-    elif pct >= 6: return '02.大漲(8~6%)'
-    elif pct >= 4: return '03.中漲(6~4%)'
-    elif pct >= 2: return '04.小漲(4~2%)' 
-    elif pct > 0: return '05.小小漲(0~2%)'
-    elif pct == 0: return '06.平盤(0%)'
-    elif pct >= -2: return '07.小小跌(-2~0%)'
-    elif pct >= -4: return '08.小跌(-4~-2%)'
-    elif pct >= -6: return '09.中跌(-6~-4%)'
-    elif pct >= -8: return '10.大跌(-8~-6%)'
-    elif pct > -10: return '11.跌停或暴跌(-8~-10%)'
-    else: return '12.超跌(<-10%)(正2股/分割/除權息/異常)'
+    if pd.isna(pct): return '00.未知'
+    if pct > 10: return '01.>10%'
+    elif pct >= 8: return '02.8~10%'
+    elif pct >= 6: return '03.6~8%'
+    elif pct >= 4: return '04.4~6%'
+    elif pct >= 2: return '05.2~4%' 
+    elif pct > 0: return '06.0~2%'
+    elif pct == 0: return '07.0%'
+    elif pct >= -2: return '08.-2~0%'
+    elif pct >= -4: return '09.-4~-2%'
+    elif pct >= -6: return '10.-6~-4%'
+    elif pct >= -8: return '11.-8~-6%'
+    elif pct > -10: return '12.-10~-8%'
+    else: return '13.<-10%'
 
 def categorize_amplitude(amp):
     """將振幅連續數值轉換為等級"""
-    if pd.isna(amp): return '5.未知'
-    if amp >= 15: return '1.劇烈波動(>15%)'
-    elif amp >= 10: return '2.高波動(10~15%)'
-    elif amp >= 5: return '3.中波動(5~10%)'
-    else: return '4.低波動(<5%)'
+    if pd.isna(amp): return '0.未知'
+    if amp >= 15: return '4.>15%'
+    elif amp >= 10: return '3.10~15%'
+    elif amp >= 5: return '2.5~10%'
+    else: return '1.<5%'
 
 def 當日K線型態_未來5日勝率計算(file_name="勝率統計",
                     與昨日成交量相比="無條件", # "量增"(包含等於) 或 "量減"
@@ -288,7 +288,6 @@ def 當日K線型態_未來5日勝率計算2(file_name="勝率統計",
             'K線型態': pattern,
             '漲跌幅等級': ret_class,
             '振幅等級': amp_class,
-            '出現次數': count
         }
         
         # 計算 1~5 日勝率
@@ -298,9 +297,13 @@ def 當日K線型態_未來5日勝率計算2(file_name="勝率統計",
             
             if len(valid_wins) > 0:
                 win_rate = valid_wins.mean() * 100
-                row_data[f'T+{i}勝率(%)'] = round(win_rate, 2)
+                row_data[f'T+{i}'] = round(win_rate, 2)
             else:
-                row_data[f'T+{i}勝率(%)'] = np.nan
+                row_data[f'T+{i}'] = np.nan
+        
+        # 擺在機率行col最右邊
+        row_data['出現次數'] = count
+
 
         stats_list.append(row_data)
         
@@ -328,7 +331,19 @@ def 當日K線型態_未來5日勝率計算2(file_name="勝率統計",
 if __name__ == "__main__":
     category = "_" + "全市場"  # 可以改成 "上市半導體業" 或其他您想分析的類別
     date_range = "_" + "2020_2026"  # 可以改成您想分析的時間範圍，例如 "2010_2020"
-    condtion = "_與昨日成交量相比量增"
-    file_name = "當日K線型態_未來5日勝率"+ condtion + category + date_range
+    volume_condition = [
+        "與昨日成交量相比",
+        "與成交量均線相比"
+    ]
+    volume_condition_variable = [
+        "無條件",
+        "量增2.0倍",
+        "量減0.5倍"
+    ]
 
-    當日K線型態_未來5日勝率計算2(file_name,與昨日成交量相比="量增")
+    condition = volume_condition[1] + volume_condition_variable[1]
+    
+
+    file_name = "當日K線型態_未來5日勝率_"+ condition  + category + date_range
+
+    當日K線型態_未來5日勝率計算2(file_name,與成交量均線相比= "量增",成交量倍數條件=2.0)
