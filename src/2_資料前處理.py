@@ -19,6 +19,7 @@ def preprocess_data(df):
     df.reset_index(inplace=True)  # 重置索引，讓日期成為一個普通欄位
     return df
 
+
 # 模組：專門處理「幅度」相關的指標
 def add_漲跌幅(df):
     """
@@ -64,6 +65,17 @@ def add_漲跌幅等級(df):
     df['漲跌幅等級'] = df['漲跌幅'].apply(classify_return)
     return df
 
+def remove_異常漲跌幅(df):
+    """
+    刪除漲跌幅大於 10% 或小於 -10% 的極端/異常資料列。
+    (台股漲跌停為 10%。這裡設為 10.5 是為了包容 Python 浮點數運算的微小誤差，
+     避免把剛好漲停算成 10.0001% 的正確資料給誤刪了)
+    """
+    # 僅保留漲跌幅在 -10.5 到 10.5 之間的資料
+    df = df[(df['漲跌幅'] <= 10.5) & (df['漲跌幅'] >= -10.5)].copy()
+    
+    return df
+
 def add_累計漲跌幅(df, window=20):
     """計算過去 N 天內的最低 / 高點到今日收盤價的累計漲跌幅 (Run-up / Drawdown)"""
     rolling_max = df['High'].rolling(window=window, min_periods=1).max()
@@ -76,6 +88,8 @@ def add_累計漲跌幅(df, window=20):
     )
     
     return df
+
+
 
 def add_振幅(df):
     """計算每日的振幅 (Daily Range)，反映當天的波動程度"""
@@ -100,6 +114,25 @@ def add_振幅等級(df):
         
     df['振幅等級(每10%為1級)'] = df['振幅'].apply(classify_range)
     return df
+
+# ====================================================================
+# 新增模組：專門處理「創N日新高與新低」
+# ====================================================================
+def add_新高新低_indicators(df):
+    """
+    判斷當日收盤價是否為過去 10日、20日、30日 的最高或最低價。
+    回傳布林值 (True/False)。
+    """
+    windows = [10, 20, 30]
+    for window in windows:
+        # 創N日新高：今日收盤價 == 過去 window 天內的最高收盤價
+        df[f'創{window}日新高'] = df['Close'] == df['Close'].rolling(window=window, min_periods=1).max()
+        
+        # 創N日新低：今日收盤價 == 過去 window 天內的最低收盤價
+        df[f'創{window}日新低'] = df['Close'] == df['Close'].rolling(window=window, min_periods=1).min()
+        
+    return df
+
 
 # 模組 ：專門處理「K棒型態」
 def add_K棒型態_詳細版(df,shadow_threshold_min=0.2,shadow_threshold_max=0.5):
@@ -353,7 +386,7 @@ def add_ma_indicators(df):
 # 模組：專門處理「成交量均線計算」 (如果未來想算成交量的均線，直接寫在這裡就好，保持結構清晰)
 def add_volume_ma_indicators(df):
     """傳入 DataFrame，計算好成交量的均線後回傳"""
-    volume_ma_windows = [5, 10, 20]
+    volume_ma_windows = [5, 10, 20,60]
     for window in volume_ma_windows:
         df[f'Volume_MA_{window}'] = df['Volume'].rolling(window=window).mean()
     return df
@@ -412,8 +445,10 @@ def ADD_ALL_INDICATORS(df):
     df = preprocess_data(df)
     df = add_K棒型態_簡易版(df)  # 先算 K 棒型態，因為後面可能會用到漲跌幅等級來判斷影線長短
     df = add_漲跌幅(df)
+    df = remove_異常漲跌幅(df)
+    df = add_新高新低_indicators(df)
     df = add_振幅(df)
-    # df = add_ma_indicators(df)
+    df = add_ma_indicators(df)
     df = add_volume_ma_indicators(df)
     # df = add_ema_indicators(df)
     # df = add_macd_indicators(df)
